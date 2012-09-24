@@ -13,7 +13,8 @@ class mw2dw:
     makeParser( mediawikiGrammar )
 
     from preprocessor import make_parser
-    templates = { }
+    templates = { 'An-Ja': u'X ', 'An-Nein': u'-', 'Team': u"""<nowiki>---- dataentry Team ----\n\n</nowiki>name : {{{NAME}}}\n\ncoordinator : {{{COORDINATOR|}}}\n\nroom : {{{ROOM}}}\n\nnumber : {{{PHONE}}}\n\n----\n\n{{topic>{{{TEAM}}}}}\n\n""" }
+
     self.preprocessor = make_parser( templates )
 
     from dw import make_parser
@@ -21,7 +22,7 @@ class mw2dw:
 
   def parse( self, source ):
 
-    if source[-1] != '\n':
+    if len( source ) and source[-1] != '\n':
       source += '\n'
 
     preprocessed_text = self.preprocessor.parse( source )
