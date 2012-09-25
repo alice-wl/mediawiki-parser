@@ -6,7 +6,26 @@ from pprint import pprint
 
 def toolset( ):
 
-    tags = {'bold': '**', 'bold_close': '**', 'italic': '//', 'italic_close': '//' }
+    mwtags = {'bold': '**', 'bold_close': '**', 'italic': '//', 'italic_close': '//' }
+    htmltags = {
+        'bold': '**', 'bold_close': '**', 'italic': '//', 'italic_close': '//',
+        'center': '<WRAP center>',
+        'center_close': '</WRAP>\n',
+        'em': '<wrap em>',
+        'em_close': '</wrap>',
+        'i': '//',
+        'i_close': '//',
+        'u': '__',
+        'u_close': '__',
+        'b': '**',
+        'b_close': '**',
+        'tt': '',
+        'tt_close': '',
+        }
+    htmlautotags = {
+        #'p': '\n\n',
+        'br': '\n\n'
+        }
 
     tags_stack = []
 
@@ -20,6 +39,7 @@ def toolset( ):
 
     namespaces = { 'Template':   'NS_TEMPLATE',
                'User':       'NS_USER',
+               'User Talk':  'NS_USER_TALK',
                'Kategorie':  'NS_CATEGORY',
                'Category':   'NS_CATEGORY',
                'File':       'NS_FILE',
@@ -35,11 +55,12 @@ def toolset( ):
                 return ''
         result = ''
         while len(tags_stack) > i:
-            result += '</%s>' % tags_stack.pop()
+            t = tags_stack.pop()
+            result += htmltags[t+'_close']
         return result
 
     def content(node):
-        return apostrophes.parse('%s' % node.leaf() + balance_tags(), tags )
+        return apostrophes.parse('%s' % node.leaf() + balance_tags(), htmltags )
 
     def render_title1(node):
         node.value = '\n\n= %s\n' % node.leaf()
@@ -70,11 +91,11 @@ def toolset( ):
 
     def render_body(node):
         metadata = ''
-        #node.value = apostrophes.parse('%s' % node.leaves(), tags)
-
+        global category_links
+        global external_autonumber
+        #node.value = apostrophes.parse('%s' % node.leaves(), mwtags)
         try:
-            if category_links != []:
-                metadata+= '{{tag> '+ ','.join( category_links ) +'}}\n'
+            #FIXME this actualy never works
             if external_autonumber != []:
                 i = 0
                 external_autonumber.reverse( )
@@ -82,13 +103,15 @@ def toolset( ):
                     i+= 1
                     metadata+= '* [%s] %s\n' % ( i, external_autonumber.pop( ))
 
+            if category_links != []:
+                metadata+= '{{tag> '+ ','.join( category_links ) +'}}\n'
+
             category_links = external_autonumber = []
-            node.value+= metadata
-            node.value = content(node) + metadata +"\n"
 
         except NameError:
             print "NameError"
 
+        node.value = content(node) + metadata +"\n"
 
     def render_entity(node):
         value = '%s' % node.leaf()
@@ -108,35 +131,54 @@ def toolset( ):
 
     def render_tag_open(node):
         tag_name = node.value[0].value
-        value = ''
-        if tag_name == 'center':
-            node.value = '<WRAP center>'
-        elif tag_name == 'em':
-            node.value = '<wrap em>'
-	else:
-            node.value = "<%s>" % tag_name
+
+        tag = htmlautotags.get( tag_name, '' )
+        if tag != '':
+            node.value = '%s' % tag
+            return
+
+        tag = htmltags.get( tag_name, '' )
+
+        #print 'o tag_name %s' % tag_name
+        #print 'o tag %s' % tag
+
+        if tag != '':
+            node.value = '%s' % tag
+            tags_stack.append( tag_name )
+        else:
+            node.value = '<%s>' % tag_name
 
     def render_tag_close(node):
         tag_name = node.value[0].value
-        if tag_name == 'center':
-            tag = 'WRAP'
-        elif tag_name == 'em':
-            tag = 'wrap'
-	else:
-	    tag = tag_name
+        tag = htmlautotags.get( tag_name, '' )
 
-	node.value = "</%s>" % tag
-	return
+        if tag != '':
+            node.value = '%s' % tag
+            return
 
-        node.value = '%s%s' % (tag_content, value)
+        tag = htmltags.get( tag_name+'_close', '' )
+
+        #print 'c tag_name %s' % tag_name
+        #print 'c tag %s' % tag
+
+        if tag != '':
+            node.value = balance_tags(tag_name)
+            #node.value = '%s' % tag
+        else:
+	    node.value = "</%s>" % tag_name
 
     def render_tag_autoclose(node):
         tag_name = node.value[0].value
-        value = attributes = ''
-        if tag_name == 'p':
-            node.value = '\n\n'
-        elif tag_name == 'br':
-            node.value = '\n\n'
+        tag = htmlautotags.get( tag_name, '' )
+
+        #print 'ac tag_name %s' % tag_name
+        #print 'ac tag %s' % tag
+
+        if tag != '':
+            node.value = '%s' % tag
+            return
+        else:
+	    node.value = "<%s />" % tag_name
 
     def render_table(node):
         table_parameters = ''
@@ -162,9 +204,9 @@ def toolset( ):
                     if value.tag == 'HTML_attribute' and value.value != '':
                         cell_parameters += ' ' + value.value
                     else:
-                        cell_content += content( value.leaf())
+                        cell_content += value.leaf()
                 else:
-                    cell_content += content( value )
+                    cell_content += value.leaf()
             cell_content += content(node.value[1])
         else:
             cell_content = content(node)
@@ -179,8 +221,7 @@ def toolset( ):
                 param, content = render_cell_content(node.value[i])
         else:
             param, content = render_cell_content(node)
-
-        node.value = content
+        node.value = '^%s ' % content.replace( "\n", ' ' )
 
     def render_table_normal_cell( node ):
         result = ''
@@ -189,12 +230,12 @@ def toolset( ):
                 param, content = render_cell_content(node.value[i])
         else:
             param, content = render_cell_content(node)
-        if content != '':
-	    content = '| %s  ' % content
-            node.value = content.replace("\n"," ")
+        content = '| %s ' % content
+        node.value = content
 
     def render_table_empty_cell(node):
-        node.value = '| '
+        print "FIXME ... never happens!!!"
+        node.value = '|\t'
 
     def render_table_caption(node):
         param, content = render_cell_content(node)
@@ -218,15 +259,16 @@ def toolset( ):
 	pass
 
     def render_lists( list, d ):
-        i = j = 0
+        i = 0
+	j = 0
 	ret = ''
         while i < len(list):
 	    if list[i].tag == 'bullet_list_leaf':
-		ret+= '*' * d + ' %s\n' % content( list[i] ) 
+		ret+= '*' * d + '%s\n' % content( list[i] ) 
 	    elif list[i].tag == '@bullet_sub_list@':
 		ret+= render_lists( list[i], d+1 )
 	    if list[i].tag == 'number_list_leaf':
-		ret+= '#' * d + ' %s\n' % content( list[i] ) 
+		ret+= '#' * d + '%s\n' % content( list[i] ) 
 	    elif list[i].tag == '@number_sub_list@':
 		ret+= render_lists( list[i], d+1 )
 	    if list[i].tag == 'colon_list_leaf':
@@ -244,21 +286,31 @@ def toolset( ):
 	node.value = render_lists( node.value, 1 )
 
     def render_url(node):
-	text = node.value[0].leaf()
-	node.value = '[[%s]]' % ( node.value[0].leaf( ))
+	#text = node.value[0].leaf()
+	#node.value = '[[%s]]' % ( node.value[0].leaf( ))
+        if len(node.value) == 1:
+	    link = node.leaf( )
+	    if link not in external_autonumber:
+		external_autonumber.append( link )
+            node.value = '([[%s|%s]])' % ( link, len( external_autonumber ))
+        else:
+            text = node.value[1].leaf()
+            node.value = '[[%s|%s]]' % ( node.value[0].leaf( ), text )
 
     def render_external_link(node):
         if len(node.value) == 1:
 	    link = node.leaf( )
 	    if link not in external_autonumber:
-		external_autonumber.append(node.leaf( ))
-            node.value = '[[%s|%s]]' % ( link, len( external_autonumber ))
+		external_autonumber.append( link )
+            node.value = '([[%s|%s]])' % ( link, len( external_autonumber ))
         else:
             text = node.value[1].leaf()
             node.value = '[[%s|%s]]' % ( node.value[0].leaf( ), text )
 
     def render_file(file_name, arguments):
-	lfloat = ''; rfloat = ''; style=''
+	lfloat = ''
+        rfloat = ''
+        style=''
         if arguments != []:
             parameters = arguments[0].value
             for parameter in parameters:
@@ -290,26 +342,28 @@ def toolset( ):
         result = '{{%s%s%s%s}}' % ( lfloat, file_name, style, rfloat )
         return result
 
-    def render_internal_link(node):
-        url = ''
-        page_name = node.value.pop(0).value
-        if page_name[0] == ':':
-            page_name = page_name[1:]
-        if ':' in page_name:
-            namespace, page_name = page_name.split(':', 1)
-            if namespace in interwiki:
-                url = interwiki[namespace]
-                namespace = ''
-            if namespace:
-                page_name = namespace + ':' + page_name
-        if len(node.value) == 0:
-            text = page_name
-        else:
-            text = '|'.join('%s' % item.leaf() for item in node.value[0])
-        node.value = '[[%s%s|%s]]' % (url, page_name, text)
+    #def render_internal_link(node):
+    #    url = ''
+    #    page_name = node.value.pop(0).value
+    #    if page_name[0] == ':':
+    #        page_name = page_name[1:]
+    #    if ':' in page_name:
+    #        namespace, page_name = page_name.split(':', 1)
+    #        if namespace in interwiki:
+    #            url = interwiki[namespace]
+    #            namespace = ''
+    #        if namespace:
+    #            page_name = namespace + ':' + page_name
+    #    if len(node.value) == 0:
+    #        text = page_name
+    #    else:
+    #        text = '|'.join('%s' % item.leaf() for item in node.value[0])
+    #    node.value = '[[%s%s|%s]]' % (url, page_name, text)
 
     def render_internal_link(node):
         page_name = node.value.pop(0).value
+
+	prefix = '29c3:'
 
         if page_name[0] == ':':
             page_name = page_name[1:]
@@ -332,13 +386,20 @@ def toolset( ):
 		    if page_name not in category_links:
 			category_links.append(page_name)
                     return
+		elif namespaces[namespace] == 'NS_USER_TALK':
+		    prefix, page = page_name.split( ':', 1 )
+		    node.value = '[[User:%s/Talk]]' % ( prefix, page)
+                    return
+		elif namespaces[namespace] == 'NS_TALK':
+		    node.value = '[[talk:prefix%s]]' % ( page_name )
+                    return
 		else:
 		    page_name = namespace + ':' + page_name
 
-	    elif namespace:
-                page_name = namespace + ':' + page_name
+	    #elif namespace:
+            #    page_name = namespace + ':' + page_name
             else:
-                page_name = '2012:' + page_name
+                page_name = prefix + page_name
 
 	#link = make_internal_link( page_name )
 	link = page_name.replace( '/', ':' )
