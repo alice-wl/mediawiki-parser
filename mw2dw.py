@@ -13,12 +13,16 @@ class mw2dw:
     makeParser( mediawikiGrammar )
 
     from preprocessor import make_parser
-    templates = { 'An-Ja': u'X ', 'An-Nein': u'-', 'Team': u"""<nowiki>---- dataentry Team ----\n\n</nowiki>name : {{{NAME}}}\n\ncoordinator : {{{COORDINATOR|}}}\n\nroom : {{{ROOM}}}\n\nnumber : {{{PHONE}}}\n\n----\n\n{{topic>{{{TEAM}}}}}\n\n""" }
+    ## FIXME dataentry interferes with mediawiki syntax and ist parsed as such
+    ## FIXME NUMBEROFARTICLES does not work at all
+    templates = { 'An-Ja': u'X ', 'An-Nein': u'-', 'Team': u"""<nowiki>---- dataentry Team ----</nowiki>\n\nname : {{{NAME}}}\n\ncoordinator : {{{COORDINATOR|}}}\n\nroom : {{{ROOM}}}\n\nnumber : {{{PHONE}}}\n\n----\n\n{{topic>{{{TEAM}}}}}\n\n""", 'NUMBEROFARTICLES': '{{template:numberofarticles}}' }
 
     self.preprocessor = make_parser( templates )
 
     from dw import make_parser
     self.parser = make_parser( )
+    ## FIXME should do all the namespace stuff here
+
 
   def parse( self, source ):
 
@@ -31,10 +35,3 @@ class mw2dw:
     output = tree.leaves( )
 
     return output
-
-#p = mw2dw.__init__( )
-#import codecs
-#fileObj = codecs.open("wikitext.txt", "r", "utf-8")
-#source = fileObj.read( )
-#output = p.parse( source )
-#file( "article.txt", "w" ).write( output.encode( 'UTF-8' ))
