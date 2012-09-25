@@ -39,6 +39,7 @@ def toolset( ):
 
     namespaces = { 'Template':   'NS_TEMPLATE',
                'User':       'NS_USER',
+               'user':       'NS_USER',
                'User Talk':  'NS_USER_TALK',
                'Kategorie':  'NS_CATEGORY',
                'Category':   'NS_CATEGORY',
@@ -102,11 +103,11 @@ def toolset( ):
                 while i <= len( external_autonumber):
                     i+= 1
                     metadata+= '* [%s] %s\n' % ( i, external_autonumber.pop( ))
+            external_autonumber = []
 
             if category_links != []:
                 metadata+= '{{tag> '+ ','.join( category_links ) +'}}\n'
-
-            category_links = external_autonumber = []
+            category_links = []
 
         except NameError:
             print "NameError"
@@ -234,7 +235,6 @@ def toolset( ):
         node.value = content
 
     def render_table_empty_cell(node):
-        print "FIXME ... never happens!!!"
         node.value = '|\t'
 
     def render_table_caption(node):
@@ -287,15 +287,13 @@ def toolset( ):
 
     def render_url(node):
 	#text = node.value[0].leaf()
-	#node.value = '[[%s]]' % ( node.value[0].leaf( ))
-        if len(node.value) == 1:
-	    link = node.leaf( )
-	    if link not in external_autonumber:
-		external_autonumber.append( link )
-            node.value = '([[%s|%s]])' % ( link, len( external_autonumber ))
-        else:
-            text = node.value[1].leaf()
-            node.value = '[[%s|%s]]' % ( node.value[0].leaf( ), text )
+	link = node.value = '[[%s]]' % ( node.value[0].leaf( ))
+        #if len(node.value) == 1:
+	#    link = node.leaf( )
+        #    node.value = '([[%s|%s]])' % ( link, link )
+        #else:
+        #    text = node.value[1].leaf()
+        #    node.value = '[[%s|%s]]' % ( node.value[0].leaf( ), text )
 
     def render_external_link(node):
         if len(node.value) == 1:
@@ -380,11 +378,13 @@ def toolset( ):
                     node.value = render_file( page_name, node.value )
                     return
 		elif namespaces[namespace] == 'NS_TEMPLATE':
-                    node.value = ''
                     return
 		elif namespaces[namespace] == 'NS_CATEGORY':
 		    if page_name not in category_links:
 			category_links.append(page_name)
+                    return
+		elif namespaces[namespace] == 'NS_USER':
+		    node.value = '[[User:%s]]' % ( page_name )
                     return
 		elif namespaces[namespace] == 'NS_USER_TALK':
 		    prefix, page = page_name.split( ':', 1 )
